@@ -1,0 +1,5 @@
+# CMake build trees.  The engine's Makefile builds this submodule in-tree at
+# build/ (see the `carquet` target), and an out-of-tree configure points here
+# too, so keep both out of `git status` in the superproject.
+/build/
+/build-*/

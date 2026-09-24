@@ -653,6 +653,10 @@ if(CARQUET_BUILD_TESTS)
     # Module-level dictionary decode for BYTE_ARRAY / FIXED_LEN_BYTE_ARRAY
     add_carquet_test(test_dict_decode tests/test_dict_decode.c)
 
+    # A nullable column written in one call larger than one page must keep
+    # every row's value or null across the chunk split
+    add_carquet_test(test_nullable_multipage tests/test_nullable_multipage.c)
+
     # Signed big-endian ordering of DECIMAL(FLBA/BYTE_ARRAY) min/max statistics
     add_carquet_test(test_decimal_stats tests/test_decimal_stats.c)
 

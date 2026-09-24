@@ -809,8 +809,15 @@ static carquet_status_t eval_clause_to_ranges(
         int64_t end_row;
         if (i + 1 < n_pages) {
             carquet_page_location_t next;
-            (void)carquet_offset_index_get_page_location(oi, i + 1, &next);
-            end_row = next.first_row_index;
+            if (carquet_offset_index_get_page_location(oi, i + 1, &next) == CARQUET_OK) {
+                end_row = next.first_row_index;
+            } else {
+                /* No location for the successor: size this page to the end of
+                 * the row group rather than skipping it.  A page missing from
+                 * the candidate set is silent data loss, and a wider range is
+                 * the same conservative choice the last page takes. */
+                end_row = row_group_num_rows;
+            }
         } else {
             end_row = row_group_num_rows;
         }

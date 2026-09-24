@@ -1607,16 +1607,31 @@ carquet_column_reader_t* carquet_reader_get_column(
 /**
  * @brief Read a batch of values from a column.
  *
- * Reads up to max_values from the column into the output buffer. For nullable
- * columns, definition levels indicate which values are null. For repeated
- * columns, repetition levels indicate list boundaries.
+ * Reads up to max_values rows from the column into the output buffer. For
+ * nullable columns, definition levels indicate which values are null. For
+ * repeated columns, repetition levels indicate list boundaries.
  *
  * @param[in] reader Column reader
  * @param[out] values Output buffer for values (sized for physical type)
- * @param[in] max_values Maximum number of values to read
+ * @param[in] max_values Maximum number of rows (definition-level slots to
+ *                       consume), not the number of values to write
  * @param[out] def_levels Definition levels buffer (may be NULL if not needed)
  * @param[out] rep_levels Repetition levels buffer (may be NULL if not needed)
- * @return Number of values read (0 at end of column), or negative on error
+ * @return Number of rows consumed (0 at end of column), or negative on error
+ *
+ * @par Rows vs values
+ * The counts mean different things on a nullable column:
+ * - @p max_values and the return value count <em>rows</em> (definition-level
+ *   entries). On a REQUIRED column this is the same as the value count.
+ * - @p values receives only the <em>present</em> (non-null) values, packed
+ *   contiguously and in row order - the k-th value written belongs to the k-th
+ *   row whose definition level marks it present. So a nullable batch can return
+ *   1000 rows while writing fewer than 1000 values, and the next batch starts
+ *   writing at the packed offset, not at the returned count.
+ * - Pass @p def_levels whenever the column is nullable: without it the values
+ *   are still packed this way, but nothing in the return value lets the caller
+ *   tell which rows were null. (Internally a scratch definition-level buffer is
+ *   used, so the nulls are skipped in @p values either way.)
  *
  * @note Thread-safe: No (single column reader is not thread-safe)
  *
@@ -1655,12 +1670,13 @@ int64_t carquet_column_read_batch(
  *
  * @param[in]  reader     Column reader
  * @param[out] values     Output buffer for values (sized for physical type)
- * @param[in]  max_values Maximum number of values to read
+ * @param[in]  max_values Maximum number of rows (definition-level slots to
+ *                        consume), not the number of values to write
  * @param[out] def_levels Definition levels buffer (may be NULL if not needed)
  * @param[out] rep_levels Repetition levels buffer (may be NULL if not needed)
  * @param[out] error      Error information (may be NULL). Cleared on entry and
  *                        set only when a failure occurs.
- * @return Number of values read, or -1 if no values could be read because of an
+ * @return Number of rows consumed, or -1 if no rows could be read because of an
  *         error. See the return/error contract below.
  *
  * @par Return / error contract
